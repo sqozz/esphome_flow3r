@@ -219,8 +219,16 @@ microphone:
     i2s_din_pin: GPIO12
     pdm: False
 
+sensor:
+  - platform: adc
+    pin: GPIO9
+    id: bat_sense
+    name: Battery
+    update_interval: 1s
+    attenuation: 11dB
+    filters:
+      - multiply: 2.0
 # cannot connect via i2c, according to schematics it is connected to bmi270 which is not supported by esphome yet
-#sensor:
 #  - platform: bmp581
 #    address: 0x68
 #    temperature:
