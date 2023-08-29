@@ -2,6 +2,11 @@ esphome:
   name: flow3r
   platform: ESP32
   board: esp32s3box
+  includes:
+# /!\ WARNING /!\
+# This is some very ugly copy&pasted code at the completely wrong place
+# TODO: understand this code and put it into a proper component
+    - max98091.h
 
 wifi:
   ssid: !secret wifi_ssid
@@ -75,6 +80,13 @@ output:
     pin: GPIO46
 
 binary_sensor:
+  - platform: custom
+    lambda: |-
+      auto my_sensor = new MAX98091();
+      App.register_component(my_sensor);
+      return {my_sensor};
+    binary_sensors:
+      name: "MAX98091"
   - platform: gpio
     pin: GPIO0
     name: "SW1"
@@ -205,19 +217,21 @@ i2s_audio:
   i2s_bclk_pin: GPIO10
   i2s_mclk_pin: GPIO18
 
-# somehow broken, player times out
+# works!
 media_player:
   - platform: i2s_audio
     name: I2S Media Player
     dac_type: external
-    i2s_dout_pin: GPIO13
+    i2s_dout_pin: GPIO12
+    mode: stereo
+    i2s_comm_fmt: lsb
 
 # untested
 microphone:
   - platform: i2s_audio
     id: i2s_microphone
     adc_type: external
-    i2s_din_pin: GPIO12
+    i2s_din_pin: GPIO13
     pdm: False
 
 sensor:
