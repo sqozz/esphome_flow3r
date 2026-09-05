@@ -1,20 +1,22 @@
 esphome:
   name: flow3r
-  platform: ESP32
+
+esp32:
   board: esp32s3box
-  includes:
-# /!\ WARNING /!\
-# This is some very ugly copy&pasted code at the completely wrong place
-# TODO: understand this code and put it into a proper component
-    - max98091.h
+  framework:
+    type: "esp-idf"
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components:
+      - max98091
+      - max7321
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-
-mqtt:
-  broker: 10.42.0.1
-  discovery: False
 
 # Enable logging
 logger:
@@ -24,14 +26,17 @@ api:
   encryption:
     key: !secret flow3r_api 
 
-ota:
-  password: !secret flow3r_ota
+#ota:
+#  password: !secret flow3r_ota
 
 i2c:
   sda: GPIO2
   scl: GPIO1
   scan: true
   id: i2c_bus
+
+max98091: # stereo audio codec chip
+  id: sac
 
 spi:
   clk_pin: GPIO41
@@ -44,17 +49,19 @@ font:
     size: 20
 
 display:
-  - platform: gc9a01
+  - platform: mipi_spi
+    model: GC9A01A
     reset_pin:
       max7321: max7321_1
-      number: 2
+      number: 3
       mode:
         output: true
     cs_pin: GPIO40
     dc_pin: GPIO38
-    rotation: 270
+    rotation: 180
+    invert_colors: true
     lambda: |-
-        it.print(0, 120, id(roboto), "Hello world!");
+        it.print(it.get_width()/2, it.get_height()/2, id(roboto), TextAlign::CENTER, "Hello world!");
 
 max7321:
 # bottom in schematics
@@ -62,7 +69,7 @@ max7321:
     address: 0x6D
     i2c_id: i2c_bus
 # top in schematics
-  - id: max7321_2
+  - id: max7321_badgelink
     address: 0x6E
     i2c_id: i2c_bus
 
@@ -80,18 +87,15 @@ output:
     pin: GPIO46
 
 binary_sensor:
-  - platform: custom
-    lambda: |-
-      auto my_sensor = new MAX98091();
-      App.register_component(my_sensor);
-      return {my_sensor};
-    binary_sensors:
-      name: "MAX98091"
   - platform: gpio
-    pin: GPIO0
+    pin:
+      number: GPIO0
+      inverted: true
     name: "SW1"
   - platform: gpio
-    pin: GPIO3
+    pin:
+      number: GPIO3
+      inverted: true
     name: "SW2"
   - platform: gpio
     id: "max1_pin1"
@@ -99,6 +103,7 @@ binary_sensor:
     pin:
       max7321: max7321_1
       number: 0
+      inverted: true
       mode:
         input: true
   - platform: gpio
@@ -107,6 +112,7 @@ binary_sensor:
     pin:
       max7321: max7321_1
       number: 7
+      inverted: true
       mode:
         input: true
   - platform: gpio
@@ -115,6 +121,7 @@ binary_sensor:
     pin:
       max7321: max7321_1
       number: 4
+      inverted: true
       mode:
         input: true
   - platform: gpio
@@ -123,6 +130,7 @@ binary_sensor:
     pin:
       max7321: max7321_1
       number: 5
+      inverted: true
       mode:
         input: true
 
@@ -138,7 +146,7 @@ binary_sensor:
         input: true
   - platform: gpio
     id: "max1_pin7"
-    name: "Microphone"
+    name: "Headphones"
     device_class: "CONNECTIVITY"
     pin:
       max7321: max7321_1
@@ -147,86 +155,99 @@ binary_sensor:
       mode:
         input: true
 
-#  - platform: gpio
-#    id: "max2_pin1"
-#    name: "max2_pin1"
-#    pin:
-#      max7321: max7321_2
-#      number: 1
-#      mode:
-#        input: true
-#  - platform: gpio
-#    id: "max2_pin2"
-#    name: "max2_pin2"
-#    pin:
-#      max7321: max7321_2
-#      number: 2
-#      mode:
-#        input: true
-#  - platform: gpio
-#    id: "max2_pin3"
-#    name: "max2_pin3"
-#    pin:
-#      max7321: max7321_2
-#      number: 3
-#      mode:
-#        input: true
-#  - platform: gpio
-#    id: "max2_pin4"
-#    name: "max2_pin4"
-#    pin:
-#      max7321: max7321_2
-#      number: 4
-#      mode:
-#        input: true
-#  - platform: gpio
-#    id: "max2_pin5"
-#    name: "max2_pin5"
-#    pin:
-#      max7321: max7321_2
-#      number: 5
-#      mode:
-#        input: true
-#  - platform: gpio
-#    id: "max2_pin6"
-#    name: "max2_pin6"
-#    pin:
-#      max7321: max7321_2
-#      number: 6
-#      mode:
-#        input: true
-#  - platform: gpio
-#    id: "max2_pin7"
-#    name: "max2_pin7"
-#    pin:
-#      max7321: max7321_2
-#      number: 7
-#      mode:
-#        input: true
-#  - platform: gpio
-#    id: "max2_pin8"
-#    name: "max2_pin8"
-#    pin:
-#      max7321: max7321_2
-#      number: 8
-#      mode:
-#        input: true
+switch:
+  # Switches for "badge link"
+  # Input/Mic
+  - platform: gpio
+    id: "in_r_sw"
+    pin:
+      max7321: max7321_badgelink
+      number: 3
+      mode:
+        input: true
+  - platform: gpio
+    id: "in_t_sw"
+    pin:
+      max7321: max7321_badgelink
+      number: 4
+      mode:
+        input: true
+  # Output/Line
+  - platform: gpio
+    id: "out_r_sw"
+    pin:
+      max7321: max7321_badgelink
+      number: 5
+      mode:
+        input: true
+  - platform: gpio
+    id: "out_t_sw"
+    pin:
+      max7321: max7321_badgelink
+      number: 6
+      mode:
+        input: true
+  # Composite switch for IN
+  - platform: template
+    id: bl_in
+    lambda: |-
+      if (id(in_r_sw).state) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - switch.turn_on: in_r_sw
+      - switch.turn_on: in_t_sw
+    turn_off_action:
+      - switch.turn_off: in_r_sw
+      - switch.turn_off: in_t_sw
+  # Composite switch for OUT
+  - platform: template
+    id: bl_out
+    lambda: |-
+      if (id(out_r_sw).state) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - switch.turn_on: out_r_sw
+      - switch.turn_on: out_t_sw
+    turn_off_action:
+      - switch.turn_off: out_r_sw
+      - switch.turn_off: out_t_sw
+  # Composite switch for the whole badge link feature (off means audio mode)
+  - platform: template
+    id: bl
+    name: "Badge Link"
+    lambda: |-
+      if (id(bl_in).state) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - switch.turn_on: bl_out
+      - switch.turn_on: bl_in
+    turn_off_action:
+      - switch.turn_off: bl_out
+      - switch.turn_off: bl_in
 
 i2s_audio:
   i2s_lrclk_pin: GPIO11
   i2s_bclk_pin: GPIO10
   i2s_mclk_pin: GPIO18
 
-# works!
-media_player:
+speaker:
   - platform: i2s_audio
-    name: I2S Media Player
+    id: i2c_speaker
     dac_type: external
     i2s_dout_pin: GPIO12
-    mode: stereo
-    i2s_comm_fmt: lsb
+    channel: stereo
+    i2s_comm_fmt: i2s_lsb
 
-# untested
+## untested
 microphone:
   - platform: i2s_audio
     id: i2s_microphone
@@ -234,33 +255,63 @@ microphone:
     i2s_din_pin: GPIO13
     pdm: False
 
+motion:
+  - platform: bmi270
+
 sensor:
   - platform: adc
     pin: GPIO9
     id: bat_sense
     name: Battery
     update_interval: 1s
-    attenuation: 11dB
+    attenuation: 12dB
     filters:
       - multiply: 2.0
-# cannot connect via i2c, according to schematics it is connected to bmi270 which is not supported by esphome yet
-#  - platform: bmp581
-#    address: 0x68
-#    temperature:
-#      name: "Flow3r Temperature"
-#    pressure:
-#      name: "Flow3r Pressure"
+  - platform: motion
+    type: acceleration_x
+    name: "BMI270 Accel X"
+  - platform: motion
+    type: acceleration_y
+    name: "BMI270 Accel Y"
+  - platform: motion
+    type: acceleration_z
+    name: "BMI270 Accel Z"
+  - platform: motion
+    type: angular_rate_x
+    name: "BMI270 Angular X"
+  - platform: motion
+    type: angular_rate_y
+    name: "BMI270 Angular Y"
+  - platform: motion
+    type: angular_rate_z
+    name: "BMI270 Angular Z"
+  - platform: motion
+    type: gyroscope_x
+    name: "BMI270 Gyro X"
+  - platform: motion
+    type: gyroscope_y
+    name: "BMI270 Gyro Y"
+  - platform: motion
+    type: gyroscope_z
+    name: "BMI270 Gyro Z"
+  - platform: motion
+    type: pitch
+    name: "BMI270 Pitch"
+  - platform: motion
+    type: roll
+    name: "BMI270 Roll"
+  - platform: bmi270
+    type: temperature
+    name: "Flow3r Temperature"
 
-# works!
 light:
   - platform: monochromatic
     name: "LCD Backlight"
     output: lcd_bl
   - platform: esp32_rmt_led_strip 
-    rgb_order: GRB
+    channel_colors: GRB
     pin: GPIO14
     num_leds: 40
-    rmt_channel: 0
     chipset: ws2812
     name: "flow3r"
     id: "flower"
