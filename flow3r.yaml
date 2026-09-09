@@ -84,18 +84,22 @@ power_supply:
 output:
   - platform: ledc
     id: lcd_bl
-    pin: GPIO46
+    pin:
+      number: GPIO46
+      ignore_strapping_warning: true
 
 binary_sensor:
   - platform: gpio
     pin:
       number: GPIO0
       inverted: true
+      ignore_strapping_warning: true
     name: "SW1"
   - platform: gpio
     pin:
       number: GPIO3
       inverted: true
+      ignore_strapping_warning: true
     name: "SW2"
   - platform: gpio
     id: "max1_pin1"
