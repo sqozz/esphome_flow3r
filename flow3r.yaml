@@ -5,6 +5,13 @@ esp32:
   board: esp32s3box
   framework:
     type: "esp-idf"
+    advanced:
+      execute_from_psram: true
+
+psram:
+  mode: octal
+  speed: 80MHz
+  ignore_not_found: false
 
 external_components:
   - source:
